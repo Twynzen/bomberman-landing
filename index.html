@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<!--
+  Landing page with an integrated mini‑Bomberman game.  The page presents
+  a short introduction using an animated typewriter effect and embeds a
+  simple grid‑based game inspired by the classic Bomberman.  Visitors can
+  move the character with the arrow keys and drop bombs with the spacebar
+  to clear breakable blocks and defeat roaming enemies.  Once the player
+  has scored enough points the call‑to‑action button becomes active and
+  glows, inviting them to schedule a free consultation via Calendly.
+  All styles and scripts are contained in this file for ease of
+  deployment on static hosts such as GitHub Pages.
+-->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Consultoría Gratuita — Bomberman Landing</title>
+    <style>
+      /* Overall layout */
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        background: radial-gradient(circle at top, #0a0f1c, #000);
+        color: #fff;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        overflow-x: hidden;
+      }
+      h1 {
+        margin-top: 2rem;
+        font-size: 2.5rem;
+        background: linear-gradient(90deg, #4facfe, #00f2fe);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      /* Typewriter container */
+      #typed {
+        font-size: 1.2rem;
+        min-height: 3rem;
+        white-space: pre-line;
+        margin-top: 0.5rem;
+        text-align: center;
+      }
+      /* Game board */
+      #gameWrapper {
+        position: relative;
+        margin-top: 1.5rem;
+        width: 550px;
+        height: 550px;
+        max-width: 90vw;
+        max-height: 90vw;
+        /* keep square ratio on smaller screens */
+      }
+      #grid {
+        display: grid;
+        width: 100%;
+        height: 100%;
+        grid-template-rows: repeat(var(--rows), 1fr);
+        grid-template-columns: repeat(var(--cols), 1fr);
+      }
+      .tile {
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+      }
+      .wall {
+        background: #444;
+      }
+      .block {
+        background: #654321;
+        border: 2px solid #3b2a18;
+      }
+      .floor {
+        background: #0a0f1c;
+        border: 1px dotted #222;
+      }
+      .player {
+        background: #00f2fe;
+        border-radius: 25%;
+      }
+      .enemy {
+        background: #e74c3c;
+        border-radius: 25%;
+      }
+      .bomb {
+        background: #0a0f1c;
+        border: 3px solid #000;
+        border-radius: 50%;
+        position: relative;
+      }
+      .bomb::after {
+        content: '';
+        position: absolute;
+        top: 25%;
+        left: 25%;
+        width: 50%;
+        height: 50%;
+        background: #f1c40f;
+        border-radius: 50%;
+      }
+      .explosion {
+        background: #f39c12;
+      }
+      /* Score and CTA */
+      #score {
+        margin-top: 1rem;
+        font-size: 1rem;
+      }
+      #cta {
+        margin-top: 1.5rem;
+        padding: 1rem 2rem;
+        font-size: 1.2rem;
+        color: #fff;
+        background: linear-gradient(90deg, #00f2fe, #4facfe);
+        border-radius: 50px;
+        text-decoration: none;
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+        transition: all 0.3s ease;
+        pointer-events: none; /* disabled by default */
+        opacity: 0.6;
+      }
+      #cta.active {
+        pointer-events: auto;
+        box-shadow: 0 0 40px rgba(0, 242, 254, 0.9);
+        transform: scale(1.05);
+        opacity: 1;
+      }
+      #cta:hover {
+        transform: scale(1.08);
+        box-shadow: 0 0 50px rgba(0, 242, 254, 1);
+      }
+      /* Responsive adjustments */
+      @media (max-width: 600px) {
+        h1 { font-size: 2rem; }
+        #typed { font-size: 1rem; }
+        #gameWrapper { width: 90vw; height: 90vw; }
+        #cta { font-size: 1rem; padding: 0.8rem 1.6rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Soluciones Digitales a tu Medida</h1>
+    <div id="typed"></div>
+    <div id="gameWrapper">
+      <div id="grid"></div>
+    </div>
+    <div id="score">Puntaje: 0</div>
+    <a id="cta" href="https://calendly.com/darmcastiblanco/30min" target="_blank">Agenda tu Consultoría Gratis</a>
+    <script>
+      // =================== Typewriter Effect ===================
+      (function typewriter() {
+        const lines = [
+          'Impulsa tu negocio con tecnología avanzada.',
+          'Automatiza procesos. Analiza datos. Vende más.',
+          'Soluciones únicas, adaptadas a tu presupuesto.',
+          'Todo comienza con una charla gratuita de 30 minutos.'
+        ];
+        let line = 0;
+        let char = 0;
+        let deleting = false;
+        const speed = 60;
+        const pause = 1500;
+        const target = document.getElementById('typed');
+        function tick() {
+          if (!deleting && char <= lines[line].length) {
+            target.textContent = lines[line].substring(0, char);
+            char++;
+            setTimeout(tick, speed);
+          } else if (deleting && char >= 0) {
+            target.textContent = lines[line].substring(0, char);
+            char--;
+            setTimeout(tick, speed / 2);
+          } else {
+            if (!deleting) {
+              deleting = true;
+              setTimeout(tick, pause);
+            } else {
+              deleting = false;
+              line = (line + 1) % lines.length;
+              setTimeout(tick, speed);
+            }
+          }
+        }
+        tick();
+      })();
+
+      // =================== Bomberman Game ===================
+      (function bombermanGame() {
+        // Grid dimensions
+        const rows = 11;
+        const cols = 11;
+        document.documentElement.style.setProperty('--rows', rows);
+        document.documentElement.style.setProperty('--cols', cols);
+        const gridEl = document.getElementById('grid');
+        // Data structures
+        const board = [];
+        // Entities positions
+        let player = { x: 1, y: 1 };
+        let enemies = [];
+        let bombs = [];
+        let explosions = [];
+        let score = 0;
+        let gameInterval;
+        const scoreEl = document.getElementById('score');
+        const ctaEl = document.getElementById('cta');
+
+        function initBoard() {
+          for (let y = 0; y < rows; y++) {
+            board[y] = [];
+            for (let x = 0; x < cols; x++) {
+              let cellType = 'floor';
+              // Borders
+              if (x === 0 || y === 0 || x === cols - 1 || y === rows - 1) {
+                cellType = 'wall';
+              }
+              // Solid walls every other cell
+              else if (x % 2 === 0 && y % 2 === 0) {
+                cellType = 'wall';
+              }
+              // Random breakable blocks
+              else if (Math.random() < 0.2 && !(x === 1 && y === 1)) {
+                cellType = 'block';
+              }
+              board[y][x] = cellType;
+            }
+          }
+          // Clear spawn area for player
+          board[1][1] = 'floor';
+          board[1][2] = 'floor';
+          board[2][1] = 'floor';
+        }
+
+        function spawnEnemies() {
+          enemies = [];
+          while (enemies.length < 2) {
+            const ex = Math.floor(Math.random() * (cols - 2)) + 1;
+            const ey = Math.floor(Math.random() * (rows - 2)) + 1;
+            // Avoid spawn near player and avoid walls/blocks
+            if (Math.abs(ex - player.x) + Math.abs(ey - player.y) > 4 && board[ey][ex] === 'floor') {
+              enemies.push({ x: ex, y: ey });
+            }
+          }
+        }
+
+        // Rendering
+        function draw() {
+          // Clear grid
+          gridEl.innerHTML = '';
+          for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+              const div = document.createElement('div');
+              div.classList.add('tile');
+              const cell = board[y][x];
+              if (cell === 'wall') div.classList.add('wall');
+              else if (cell === 'block') div.classList.add('block');
+              else div.classList.add('floor');
+              // Entities layered above
+              // Explosions
+              const expl = explosions.find(e => e.x === x && e.y === y);
+              if (expl) {
+                div.className = 'tile explosion';
+              } else {
+                // Bombs
+                const bomb = bombs.find(b => b.x === x && b.y === y);
+                if (bomb) {
+                  div.className = 'tile bomb';
+                }
+                // Player
+                if (player.x === x && player.y === y) {
+                  div.className = 'tile player';
+                }
+                // Enemies
+                const enemy = enemies.find(e => e.x === x && e.y === y);
+                if (enemy) {
+                  div.className = 'tile enemy';
+                }
+              }
+              gridEl.appendChild(div);
+            }
+          }
+          scoreEl.textContent = `Puntaje: ${score}`;
+          // Activate CTA after some score (500 points ~ destroying 5 enemies)
+          if (score >= 500 && !ctaEl.classList.contains('active')) {
+            ctaEl.classList.add('active');
+          }
+        }
+
+        function placeBomb() {
+          // Only one bomb at a time per cell
+          if (bombs.find(b => b.x === player.x && b.y === player.y)) return;
+          bombs.push({ x: player.x, y: player.y, timer: 12, radius: 2 });
+        }
+
+        function updateBombs() {
+          for (let i = bombs.length - 1; i >= 0; i--) {
+            const bomb = bombs[i];
+            bomb.timer--;
+            if (bomb.timer <= 0) {
+              // explode
+              explode(bomb);
+              bombs.splice(i, 1);
+            }
+          }
+        }
+
+        function explode(bomb) {
+          const positions = [];
+          positions.push({ x: bomb.x, y: bomb.y });
+          // Four directions
+          const dirs = [ [1, 0], [-1, 0], [0, 1], [0, -1] ];
+          for (const [dx, dy] of dirs) {
+            for (let r = 1; r <= bomb.radius; r++) {
+              const nx = bomb.x + dx * r;
+              const ny = bomb.y + dy * r;
+              if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) break;
+              const cell = board[ny][nx];
+              positions.push({ x: nx, y: ny });
+              if (cell === 'wall') break;
+              if (cell === 'block') {
+                board[ny][nx] = 'floor';
+                break;
+              }
+            }
+          }
+          // Mark explosion positions
+          positions.forEach(pos => {
+            explosions.push({ x: pos.x, y: pos.y, timer: 4 });
+            // Damage enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+              const e = enemies[i];
+              if (e.x === pos.x && e.y === pos.y) {
+                enemies.splice(i, 1);
+                score += 100;
+              }
+            }
+            // Damage player
+            if (player.x === pos.x && player.y === pos.y) {
+              gameOver();
+            }
+          });
+        }
+
+        function updateExplosions() {
+          for (let i = explosions.length - 1; i >= 0; i--) {
+            const ex = explosions[i];
+            ex.timer--;
+            if (ex.timer <= 0) explosions.splice(i, 1);
+          }
+        }
+
+        function moveEnemies() {
+          enemies.forEach(enemy => {
+            const options = [];
+            const directions = [ { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 } ];
+            directions.forEach(dir => {
+              const nx = enemy.x + dir.dx;
+              const ny = enemy.y + dir.dy;
+              if (board[ny][nx] === 'floor' && !bombs.find(b => b.x === nx && b.y === ny)) {
+                options.push({ x: nx, y: ny });
+              }
+            });
+            if (options.length > 0) {
+              const choice = options[Math.floor(Math.random() * options.length)];
+              enemy.x = choice.x;
+              enemy.y = choice.y;
+            }
+          });
+        }
+
+        function checkCollisions() {
+          // Player with enemy
+          if (enemies.find(e => e.x === player.x && e.y === player.y)) {
+            gameOver();
+          }
+          // Spawn new enemies if necessary
+          if (enemies.length < 2) {
+            spawnEnemies();
+          }
+        }
+
+        function gameOver() {
+          clearInterval(gameInterval);
+          alert('¡Juego terminado! Puntaje: ' + score);
+          resetGame();
+        }
+
+        function resetGame() {
+          // Reset board
+          initBoard();
+          player = { x: 1, y: 1 };
+          bombs = [];
+          explosions = [];
+          score = 0;
+          spawnEnemies();
+          draw();
+          clearInterval(gameInterval);
+          gameInterval = setInterval(tick, 200);
+          ctaEl.classList.remove('active');
+        }
+
+        function tick() {
+          updateBombs();
+          updateExplosions();
+          moveEnemies();
+          checkCollisions();
+          draw();
+        }
+
+        function handleKey(e) {
+          const key = e.key;
+          let nx = player.x;
+          let ny = player.y;
+          if (key === 'ArrowUp' || key === 'w' || key === 'W') ny--;
+          else if (key === 'ArrowDown' || key === 's' || key === 'S') ny++;
+          else if (key === 'ArrowLeft' || key === 'a' || key === 'A') nx--;
+          else if (key === 'ArrowRight' || key === 'd' || key === 'D') nx++;
+          else if (key === ' ' || key === 'Spacebar') {
+            placeBomb();
+            return;
+          } else {
+            return;
+          }
+          // Check collision with walls/blocks/bombs
+          if (board[ny][nx] === 'floor' && !bombs.find(b => b.x === nx && b.y === ny)) {
+            player.x = nx;
+            player.y = ny;
+          }
+        }
+
+        window.addEventListener('keydown', handleKey);
+        // Initialise game
+        initBoard();
+        spawnEnemies();
+        draw();
+        gameInterval = setInterval(tick, 200);
+      })();
+    </script>
+  </body>
+</html>
